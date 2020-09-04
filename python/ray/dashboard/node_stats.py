@@ -60,22 +60,24 @@ class NodeStats(threading.Thread):
     def _insert_log_counts(self):
         for ip, logs_by_pid in self._logs.items():
             hostname = self._ip_to_hostname[ip]
-            if hostname in self._node_stats:
+            host_key = (hostname, ip)
+            if host_key in self._node_stats:
                 logs_by_pid = {
                     pid: len(logs)
                     for pid, logs in logs_by_pid.items()
                 }
-                self._node_stats[hostname]["log_count"] = logs_by_pid
+                self._node_stats[host_key]["log_count"] = logs_by_pid
 
     def _insert_error_counts(self):
         for ip, errs_by_pid in self._errors.items():
             hostname = self._ip_to_hostname[ip]
-            if hostname in self._node_stats:
+            host_key = (hostname, ip)
+            if host_key in self._node_stats:
                 errs_by_pid = {
                     pid: len(errs)
                     for pid, errs in errs_by_pid.items()
                 }
-                self._node_stats[hostname]["error_count"] = errs_by_pid
+                self._node_stats[host_key]["error_count"] = errs_by_pid
 
     def _purge_outdated_stats(self):
         def current(then, now):
@@ -209,15 +211,13 @@ class NodeStats(threading.Thread):
             actor_tree[parent_id]["children"][actor_id] = actor_tree[actor_id]
         return actor_tree["root"]["children"]
 
-    def get_logs(self, hostname, pid):
-        ip = self._node_stats.get(hostname, {"ip": None})["ip"]
+    def get_logs(self, ip, pid):
         logs = self._logs.get(ip, {})
         if pid:
             logs = {pid: logs.get(pid, [])}
         return logs
 
-    def get_errors(self, hostname, pid):
-        ip = self._node_stats.get(hostname, {"ip": None})["ip"]
+    def get_errors(self, ip, pid):
         errors = self._errors.get(ip, {})
         if pid:
             errors = {pid: errors.get(pid, [])}
@@ -305,7 +305,8 @@ class NodeStats(threading.Thread):
                     elif channel == ray.gcs_utils.RAY_REPORTER_PUBSUB_PATTERN:
                         data = json.loads(ray.utils.decode(data))
                         self._ip_to_hostname[data["ip"]] = data["hostname"]
-                        self._node_stats[data["hostname"]] = data
+                        host_key = (data["hostname"], data["ip"])
+                        self._node_stats[host_key] = data
                     else:
                         logger.warning("Unexpected channel data received, "
                                        "channel: {}, data: {}".format(
