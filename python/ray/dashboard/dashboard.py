@@ -717,7 +717,8 @@ class RayletStats(threading.Thread):
                         timeout=2)
                     reply_dict = MessageToDict(reply)
                     reply_dict["nodeId"] = node_id
-                    replies[(node["NodeManagerAddress"], node["NodeManagerHostname"])] = reply_dict
+                    replies[(node["NodeManagerAddress"],
+                             node["NodeManagerHostname"])] = reply_dict
                 with self._raylet_stats_lock:
                     for address, reply_dict in replies.items():
                         self._raylet_stats[address] = reply_dict
