@@ -618,6 +618,7 @@ class RayletStats(threading.Thread):
             self.nodes = ray.nodes()
             node_ids = [node["NodeID"] for node in self.nodes]
 
+            logger.warning(self.nodes)
             # First remove node connections of disconnected nodes.
             for node_id in self.stubs.keys():
                 if node_id not in node_ids:
