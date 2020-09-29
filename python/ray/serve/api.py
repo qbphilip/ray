@@ -1,5 +1,6 @@
 import atexit
 from functools import wraps
+import os
 
 import ray
 from ray.serve.constants import (DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT,
@@ -224,6 +225,10 @@ class Client:
 
         if config is None:
             config = {}
+        if ray_actor_options is None:
+            ray_actor_options = {}
+        ray_actor_options.update(
+            override_worker_env={"PATH": os.environ.get("PATH")})
         replica_config = ReplicaConfig(
             func_or_class,
             *actor_init_args,
