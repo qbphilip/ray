@@ -2,10 +2,9 @@ import ray
 from ray import serve
 import os
 
-import tensorflow
-
 
 def tf_version(request):
+    import tensorflow
     return ("This backend is using tensorflow version " +
             tensorflow.__version__ + "with env" + str(os.environ))
 

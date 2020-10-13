@@ -228,7 +228,10 @@ class Client:
         if ray_actor_options is None:
             ray_actor_options = {}
         ray_actor_options.update(
-            override_worker_env={"PATH": os.environ.get("PATH")})
+            override_worker_env={
+                "PATH": os.environ.get("PATH"),
+                "PYTHONHOME": os.environ.get("CONDA_PREFIX")
+            })
         replica_config = ReplicaConfig(
             func_or_class,
             *actor_init_args,
