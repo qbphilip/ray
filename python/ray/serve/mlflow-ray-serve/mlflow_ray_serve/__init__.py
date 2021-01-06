@@ -44,7 +44,8 @@ class RayServePlugin(BaseDeploymentClient):
     def __init__(self, uri):
         super().__init__(uri)
         try:
-            ray.init(address="auto") # TODO: support URI (ray-serve:/192.168....)
+            # TODO: support URI (ray-serve:/192.168....)
+            ray.init(address="auto")
         except ConnectionError:
             raise MLflowException("Could not find a running Ray instance")
         try:
@@ -52,8 +53,7 @@ class RayServePlugin(BaseDeploymentClient):
         except RayServeException:
             raise MlflowException(
                 "Could not find a running Ray Serve instance on this Ray "
-                "cluster."
-            )
+                "cluster.")
 
     def help():
         return target_help()
