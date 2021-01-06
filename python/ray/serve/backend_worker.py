@@ -106,8 +106,9 @@ def create_backend_replica(func_or_class: Union[Callable, Type[Callable]]):
     class RayServeWrappedReplica(object):
         def __init__(self, backend_tag, replica_tag, init_args,
                      backend_config: BackendConfig, controller_name: str):
-            # Set the controller name so that serve.connect() will connect to
-            # the instance that this backend is running in.
+            # Set the controller name so that serve.connect() in the user's
+            # backend code will connect to the instance that this backend is
+            # running in.
             ray.serve.api._set_internal_controller_name(controller_name)
             if is_function:
                 _callable = func_or_class
@@ -125,6 +126,9 @@ def create_backend_replica(func_or_class: Union[Callable, Type[Callable]]):
 
         def ready(self):
             pass
+
+        async def drain_pending_queries(self):
+            return await self.backend.drain_pending_queries()
 
     RayServeWrappedReplica.__name__ = "RayServeReplica_{}".format(
         func_or_class.__name__)
@@ -186,10 +190,10 @@ class RayServeReplica:
             "backend_replica_starts",
             description=("The number of time this replica "
                          "has been restarted due to failure."),
-            tag_keys=("backend", "replica_tag"))
+            tag_keys=("backend", "replica"))
         self.restart_counter.set_default_tags({
             "backend": self.backend_tag,
-            "replica_tag": self.replica_tag
+            "replica": self.replica_tag
         })
 
         self.queuing_latency_tracker = metrics.Histogram(
@@ -198,39 +202,39 @@ class RayServeReplica:
                 "The latency for queries waiting in the replica's queue "
                 "waiting to be processed or batched."),
             boundaries=DEFAULT_LATENCY_BUCKET_MS,
-            tag_keys=("backend", "replica_tag"))
+            tag_keys=("backend", "replica"))
         self.queuing_latency_tracker.set_default_tags({
             "backend": self.backend_tag,
-            "replica_tag": self.replica_tag
+            "replica": self.replica_tag
         })
 
         self.processing_latency_tracker = metrics.Histogram(
             "backend_processing_latency_ms",
             description="The latency for queries to be processed",
             boundaries=DEFAULT_LATENCY_BUCKET_MS,
-            tag_keys=("backend", "replica_tag", "batch_size"))
+            tag_keys=("backend", "replica", "batch_size"))
         self.processing_latency_tracker.set_default_tags({
             "backend": self.backend_tag,
-            "replica_tag": self.replica_tag
+            "replica": self.replica_tag
         })
 
         self.num_queued_items = metrics.Gauge(
             "replica_queued_queries",
             description=("Current number of queries queued in the "
                          "the backend replicas"),
-            tag_keys=("backend", "replica_tag"))
+            tag_keys=("backend", "replica"))
         self.num_queued_items.set_default_tags({
             "backend": self.backend_tag,
-            "replica_tag": self.replica_tag
+            "replica": self.replica_tag
         })
 
         self.num_processing_items = metrics.Gauge(
             "replica_processing_queries",
             description="Current number of queries being processed",
-            tag_keys=("backend", "replica_tag"))
+            tag_keys=("backend", "replica"))
         self.num_processing_items.set_default_tags({
             "backend": self.backend_tag,
-            "replica_tag": self.replica_tag
+            "replica": self.replica_tag
         })
 
         self.restart_counter.record(1)
@@ -410,3 +414,25 @@ class RayServeReplica:
 
         self.num_ongoing_requests -= 1
         return result
+
+    async def drain_pending_queries(self):
+        """Perform graceful shutdown.
+
+        Trigger a graceful shutdown protocol that will wait for all the queued
+        tasks to be completed and return to the controller.
+        """
+        sleep_time = self.config.experimental_graceful_shutdown_wait_loop_s
+        while True:
+            # Sleep first because we want to make sure all the routers receive
+            # the notification to remove this replica first.
+            await asyncio.sleep(sleep_time)
+
+            num_queries_waiting = self.batch_queue.qsize()
+            if (num_queries_waiting == 0) and (self.num_ongoing_requests == 0):
+                break
+            else:
+                logger.info(
+                    f"Waiting for an additional {sleep_time}s "
+                    f"to shutdown replica {self.replica_tag} because "
+                    f"num_queries_waiting {num_queries_waiting} and "
+                    f"num_ongoing_requests {self.num_ongoing_requests}")
