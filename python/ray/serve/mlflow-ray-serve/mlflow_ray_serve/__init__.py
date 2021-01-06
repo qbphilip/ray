@@ -2,7 +2,10 @@ import logging
 
 import ray
 from ray import serve
+from ray.serve.exceptions import RayServeException
 from mlflow.deployments import BaseDeploymentClient
+from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 
 import mlflow.pyfunc
 
@@ -12,21 +15,26 @@ logger = logging.getLogger(__name__)
 def target_help():
     # TODO: Improve
     help_string = ("The mlflow-ray-serve plugin integrates Ray Serve "
-                   "with the MLFlow deployment API. ")
+                   "with the MLFlow deployments API. To use this plugin, "
+                   "you must already have a long-running Ray cluster "
+                   "running and a detached Ray Serve instance running on it."
+                   "For example, run `ray start --head` and then call "
+                   "`serve.start(detached=True)` from a Python script.")
     return help_string
 
 
 def run_local(name, model_uri, flavor=None, config=None):
-    pass  # TODO
+    # TODO: implement
+    raise MlflowException("run_local is not currently supported.")
 
 
-class MLFlowBackend:
+# TODO: All models appear in Ray Dashboard as "MLflowBackend".  Improve this.
+class MLflowBackend:
     def __init__(self, model_uri):
         self.model = mlflow.pyfunc.load_model(model_uri=model_uri)
 
     async def __call__(self, request):
-        # TODO: Does this correctly use Ray Serve pandas.df optimization?
-        df = request.data
+        df = await request.body()
         return self.model.predict(df)
 
 
@@ -35,19 +43,33 @@ class RayServePlugin(BaseDeploymentClient):
 
     def __init__(self, uri):
         super().__init__(uri)
-        ray.init()
-        self.client = serve.start()
+        try:
+            ray.init(address="auto") # TODO: support URI (ray-serve:/192.168....)
+        except ConnectionError:
+            raise MLflowException("Could not find a running Ray instance")
+        try:
+            self.client = serve.connect()
+        except RayServeException:
+            raise MlflowException(
+                "Could not find a running Ray Serve instance on this Ray "
+                "cluster."
+            )
 
     def help():
         return target_help()
 
     def create_deployment(self, name, model_uri, flavor=None, config=None):
+        if flavor is not None and flavor is not "python_function":
+            raise MlflowException(
+                message=(
+                    f"Flavor {flavor} specified, but only the python_function "
+                    f"flavor is supported."),
+                error_code=INVALID_PARAMETER_VALUE)
         self.client.create_backend(
-            name, MLFlowBackend, model_uri, config=config)
+            name, MLflowBackend, model_uri, config=config)
         self.client.create_endpoint(name, backend=name)
-        # TODO: validate flavor
         # TODO: conda env integration
-        return {"name": name, "config": config}
+        return {"name": name, "config": config, "flavor": "python_function"}
 
     def delete_deployment(self, name):
         self.client.delete_endpoint(name)
@@ -57,10 +79,11 @@ class RayServePlugin(BaseDeploymentClient):
     def update_deployment(self, name, model_uri=None, flavor=None,
                           config=None):
         if model_uri is None:
-            self.client.update_backend_config(name, config=config)
+            self.client.update_backend_config(name, config)
         else:
             self.delete_deployment(name)
-            self.create_deployment(name, model_uri)
+            self.create_deployment(name, model_uri, flavor, config)
+        return {"name": name, "config": config, "flavor": "python_function"}
 
     def list_deployments(self, **kwargs):
         return [{
@@ -69,8 +92,10 @@ class RayServePlugin(BaseDeploymentClient):
         } for (name, config) in self.client.list_backends().items()]
 
     def get_deployment(self, name):
-        # TODO: raise error if name not found
-        return {"name": name, "config": self.client.list_backends()[name]}
+        try:
+            return {"name": name, "config": self.client.list_backends()[name]}
+        except KeyError:
+            raise MlflowException(f"No deployment with name {name} found")
 
     def predict(self, deployment_name, df):
         return ray.get(self.client.get_handle(deployment_name).remote(df))
