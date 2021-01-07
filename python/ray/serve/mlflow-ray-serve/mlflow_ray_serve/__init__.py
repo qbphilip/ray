@@ -59,7 +59,7 @@ class RayServePlugin(BaseDeploymentClient):
         return target_help()
 
     def create_deployment(self, name, model_uri, flavor=None, config=None):
-        if flavor is not None and flavor is not "python_function":
+        if flavor is not None and flavor != "python_function":
             raise MlflowException(
                 message=(
                     f"Flavor {flavor} specified, but only the python_function "
