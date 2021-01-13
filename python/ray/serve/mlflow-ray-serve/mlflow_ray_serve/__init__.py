@@ -15,17 +15,25 @@ logger = logging.getLogger(__name__)
 def target_help():
     # TODO: Improve
     help_string = ("The mlflow-ray-serve plugin integrates Ray Serve "
-                   "with the MLFlow deployments API. To use this plugin, "
-                   "you must already have a long-running Ray cluster "
-                   "running and a detached Ray Serve instance running on it."
-                   "For example, run `ray start --head` and then call "
-                   "`serve.start(detached=True)` from a Python script.")
+                   "with the MLFlow deployments API.\n\n"
+                   "Before using this plugin, you must set up a "
+                   "detached Ray Serve instance running on "
+                   "a long-running Ray cluster. "
+                   "One way to do this is to run `ray start --head` followed by "
+                   "`serve start`.\n\n"
+                   
+                   "Basic usage:\n\n"
+                   "    mlflow deployments <command> -t ray-serve\n\n"
+                   "For more details and examples, see the README at "
+                   "https://github.com/ray-project/mlflow-ray-serve"
+                   "/blob/master/README.md")
     return help_string
 
 
 def run_local(name, model_uri, flavor=None, config=None):
     # TODO: implement
-    raise MlflowException("run_local is not currently supported.")
+    raise MlflowException("mlflow-ray-serve does not currently "
+                          "support run_local.")
 
 
 # TODO: All models appear in Ray Dashboard as "MLflowBackend".  Improve this.
@@ -39,15 +47,13 @@ class MLflowBackend:
 
 
 class RayServePlugin(BaseDeploymentClient):
-    # TODO: raise MLflow exceptions as necessary
-
     def __init__(self, uri):
         super().__init__(uri)
         try:
-            # TODO: support URI (ray-serve:/192.168....)
+            # TODO: support URI and redis password (ray-serve:/192.168....)?
             ray.init(address="auto")
         except ConnectionError:
-            raise MLflowException("Could not find a running Ray instance")
+            raise MLflowException("Could not find a running Ray instance.")
         try:
             self.client = serve.connect()
         except RayServeException:
@@ -63,12 +69,11 @@ class RayServePlugin(BaseDeploymentClient):
             raise MlflowException(
                 message=(
                     f"Flavor {flavor} specified, but only the python_function "
-                    f"flavor is supported."),
+                    f"flavor is supported by mlflow-ray-serve."),
                 error_code=INVALID_PARAMETER_VALUE)
         self.client.create_backend(
             name, MLflowBackend, model_uri, config=config)
         self.client.create_endpoint(name, backend=name)
-        # TODO: conda env integration
         return {"name": name, "config": config, "flavor": "python_function"}
 
     def delete_deployment(self, name):
