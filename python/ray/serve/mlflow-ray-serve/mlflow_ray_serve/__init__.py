@@ -14,19 +14,19 @@ logger = logging.getLogger(__name__)
 
 def target_help():
     # TODO: Improve
-    help_string = ("The mlflow-ray-serve plugin integrates Ray Serve "
-                   "with the MLFlow deployments API.\n\n"
-                   "Before using this plugin, you must set up a "
-                   "detached Ray Serve instance running on "
-                   "a long-running Ray cluster. "
-                   "One way to do this is to run `ray start --head` followed by "
-                   "`serve start`.\n\n"
-                   
-                   "Basic usage:\n\n"
-                   "    mlflow deployments <command> -t ray-serve\n\n"
-                   "For more details and examples, see the README at "
-                   "https://github.com/ray-project/mlflow-ray-serve"
-                   "/blob/master/README.md")
+    help_string = (
+        "The mlflow-ray-serve plugin integrates Ray Serve "
+        "with the MLFlow deployments API.\n\n"
+        "Before using this plugin, you must set up a "
+        "detached Ray Serve instance running on "
+        "a long-running Ray cluster. "
+        "One way to do this is to run `ray start --head` followed by "
+        "`serve start`.\n\n"
+        "Basic usage:\n\n"
+        "    mlflow deployments <command> -t ray-serve\n\n"
+        "For more details and examples, see the README at "
+        "https://github.com/ray-project/mlflow-ray-serve"
+        "/blob/master/README.md")
     return help_string
 
 
@@ -53,7 +53,7 @@ class RayServePlugin(BaseDeploymentClient):
             # TODO: support URI and redis password (ray-serve:/192.168....)?
             ray.init(address="auto")
         except ConnectionError:
-            raise MLflowException("Could not find a running Ray instance.")
+            raise MlflowException("Could not find a running Ray instance.")
         try:
             self.client = serve.connect()
         except RayServeException:
