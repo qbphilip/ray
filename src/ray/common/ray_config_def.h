@@ -48,7 +48,8 @@ RAY_CONFIG(uint64_t, raylet_report_resources_period_milliseconds, 100)
 RAY_CONFIG(uint64_t, num_resource_report_periods_warning, 5)
 
 /// The duration between dumping debug info to logs, or 0 to disable.
-RAY_CONFIG(uint64_t, debug_dump_period_milliseconds, 10000)
+RAY_CONFIG(uint64_t, debug_dump_period_milliseconds,
+           100000)  // 10xed this, it didn't work...
 
 RAY_CONFIG(bool, asio_event_loop_stats_collection_enabled, false)
 

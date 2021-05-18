@@ -85,4 +85,6 @@ class JobConfig:
         runtime_env.uris[:] = self.get_runtime_env_uris()
         runtime_env.conda_env_name = (self._parsed_runtime_env.conda_env_name
                                       or "")
+        runtime_env.conda_serialized_yaml = (
+            self._parsed_runtime_env.conda_serialized_yaml or "")
         return runtime_env

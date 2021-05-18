@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import os
+import logging
 
 import ray
 import ray.actor
@@ -112,12 +113,19 @@ parser.add_argument(
     default=ray_constants.LOGGING_ROTATE_BACKUP_COUNT,
     help="Specify the backup count of rotated log file, default is "
     f"{ray_constants.LOGGING_ROTATE_BACKUP_COUNT}.")
+
+logger = logging.getLogger(__name__)
+logger.error("In default worker script")
+
 if __name__ == "__main__":
     # NOTE(sang): For some reason, if we move the code below
     # to a separate function, tensorflow will capture that method
     # as a step function. For more details, check out
     # https://github.com/ray-project/ray/pull/12225#issue-525059663.
+    logger.error("In default worker main")
+    time.sleep(1)
     args = parser.parse_args()
+
     ray._private.ray_logging.setup_logger(args.logging_level,
                                           args.logging_format)
 

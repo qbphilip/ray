@@ -246,7 +246,7 @@ cdef extern from "ray/core_worker/common.h" nogil:
 
     cdef cppclass CRuntimeEnv "ray::RuntimeEnv":
         CRuntimeEnv()
-        CRuntimeEnv(c_string conda_env_name)
+        CRuntimeEnv(c_string conda_env_name, c_string conda_serialized_yaml)
 
     cdef cppclass CTaskOptions "ray::TaskOptions":
         CTaskOptions()

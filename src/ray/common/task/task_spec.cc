@@ -16,17 +16,22 @@ int TaskSpecification::next_sched_id_;
 void RuntimeEnv::Update(RuntimeEnv runtime_env) {
   if (runtime_env.conda_env_name != "") {
     conda_env_name = runtime_env.conda_env_name;
+    conda_serialized_yaml = "";
+  } else if (runtime_env.conda_serialized_yaml != "") {
+    conda_serialized_yaml = runtime_env.conda_serialized_yaml;
+    conda_env_name = "";
   }
 }
 
 rpc::RuntimeEnv RuntimeEnv::GetMessage() const {
   rpc::RuntimeEnv message;
   message.set_conda_env_name(conda_env_name);
+  message.set_conda_serialized_yaml(conda_serialized_yaml);
   return message;
 }
 
 RuntimeEnv RuntimeEnv::FromProto(rpc::RuntimeEnv message) {
-  return RuntimeEnv(message.conda_env_name());
+  return RuntimeEnv(message.conda_env_name(), message.conda_serialized_yaml());
 }
 
 SchedulingClassDescriptor &TaskSpecification::GetSchedulingClassDescriptor(

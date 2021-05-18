@@ -31,8 +31,10 @@ static inline rpc::ObjectReference GetReferenceForActorDummyObject(
 class RuntimeEnv {
  public:
   RuntimeEnv() {}
-  RuntimeEnv(std::string conda_env_name) : conda_env_name(conda_env_name) {}
+  RuntimeEnv(std::string conda_env_name, std::string conda_serialized_yaml)
+      : conda_env_name(conda_env_name), conda_serialized_yaml(conda_serialized_yaml) {}
   std::string conda_env_name;
+  std::string conda_serialized_yaml;
 
   /// Perform a simple dict update.
   ///
@@ -43,6 +45,8 @@ class RuntimeEnv {
   rpc::RuntimeEnv GetMessage() const;
 
   static RuntimeEnv FromProto(rpc::RuntimeEnv message);
+
+  // TODO(architkulkarni) IsEmpty
 };
 
 /// Wrapper class of protobuf `TaskSpec`, see `common.proto` for details.

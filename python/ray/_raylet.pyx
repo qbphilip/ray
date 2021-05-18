@@ -1225,7 +1225,8 @@ cdef class CoreWorker:
         with self.profile_event(b"submit_task"):
             prepare_resources(resources, &c_resources)
             conda_env_name = runtime_env.conda_env_name or ""
-            c_runtime_env = CRuntimeEnv(conda_env_name)
+            conda_serialized_yaml = runtime_env.conda_serialized_yaml or ""
+            c_runtime_env = CRuntimeEnv(conda_env_name, conda_serialized_yaml)
             ray_function = CRayFunction(
                 language.lang, function_descriptor.descriptor)
             prepare_args(self, language, args, &args_vector)
@@ -1281,7 +1282,9 @@ cdef class CoreWorker:
         with self.profile_event(b"submit_task"):
             prepare_resources(resources, &c_resources)
             prepare_resources(placement_resources, &c_placement_resources)
-            c_runtime_env = CRuntimeEnv(runtime_env.conda_env_name or "")
+            conda_env_name = runtime_env.conda_env_name or ""
+            conda_serialized_yaml = runtime_env.conda_serialized_yaml or ""
+            c_runtime_env = CRuntimeEnv(conda_env_name, conda_serialized_yaml)
             ray_function = CRayFunction(
                 language.lang, function_descriptor.descriptor)
             prepare_args(self, language, args, &args_vector)

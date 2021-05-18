@@ -27,7 +27,7 @@ def conda_envs():
     def create_tf_env(tf_version: str):
 
         subprocess.run([
-            "conda", "create", "-n", f"tf-{tf_version}", f"--clone",
+            "conda", "create", "-n", f"tf-{tf_version}", "--clone",
             current_conda_env, "-y"
         ])
         commands = [
@@ -138,6 +138,47 @@ def test_job_config_conda_env(conda_envs, shutdown_only):
         ray.init(job_config=JobConfig(runtime_env=runtime_env))
         assert ray.get(get_conda_env.remote()) == tf_version
         ray.shutdown()
+
+
+def test_conda_create_basic(shutdown_only):
+    ray.init()
+    ray_version = ray.__version__
+    python_version = f"{sys.version_info.major}{sys.version_info.minor}"
+    os_strings = {
+        "darwin": "macosx_10_13_intel",
+        "linux": "manylinux2014_x86_64",
+        "win32": "win_amd64"
+    }
+
+    nightly_url = (f"https://s3-us-west-2.amazonaws.com/ray-wheels/latest/"
+                   f"ray-{ray_version}-cp{python_version}-"
+                   f"cp{python_version}{'m' if python_version != '38' else ''}"
+                   f"-{os_strings[sys.platform]}.whl")
+    # E.g. 3.6.13
+    python_micro_version_dots = ".".join(map(str, sys.version_info[:3]))
+    runtime_env = {
+        "conda": {
+            "dependencies": [
+                f"python={python_micro_version_dots}", {
+                    "pip": [nightly_url, "pip-install-test==0.5"]
+                }
+            ]
+        }
+    }
+
+    @ray.remote
+    def f():
+        import pip_install_test  # noqa
+        return True
+
+    with pytest.raises(ModuleNotFoundError):
+        # Ensure pip-install-test is not installed on the test machine
+        import pip_install_test  # noqa
+    print("STARTING REMOTE TASK WITHOUT INSTALL")
+    with pytest.raises(ray.exceptions.RayTaskError):
+        ray.get(f.remote())
+    print("STARTING REMOTE TASK WITH INSTALL")
+    assert ray.get(f.options(runtime_env=runtime_env).remote())
 
 
 def test_get_conda_env_dir(tmp_path):

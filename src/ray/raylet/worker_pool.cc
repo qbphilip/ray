@@ -285,6 +285,14 @@ Process WorkerPool::StartWorkerProcess(
     if (runtime_env.conda_env_name != "") {
       const std::string conda_env_name = runtime_env.conda_env_name;
       worker_command_args.push_back("--conda-env-name=" + conda_env_name);
+    } else if (runtime_env.conda_serialized_yaml != "") {
+      RAY_LOG(ERROR) << "got serialized yaml" << runtime_env.conda_serialized_yaml;
+      const std::string conda_serialized_yaml = runtime_env.conda_serialized_yaml;
+      const std::string conda_yaml_path = "/tmp/environment.yml";  // TODO(architkulkarni)
+      std::ofstream out(conda_yaml_path);
+      out << conda_serialized_yaml;
+      out.close();
+      worker_command_args.push_back("--conda-yaml-path=" + conda_yaml_path);
     } else {
       // The "shim process" setup worker is not needed, so do not run it.
       // Check that the arg really is the path to the setup worker before erasing it, to
@@ -825,7 +833,9 @@ std::shared_ptr<WorkerInterface> WorkerPool::PopWorker(
   Process proc;
   if ((task_spec.IsActorCreationTask() && !task_spec.DynamicWorkerOptions().empty()) ||
       task_spec.OverrideEnvironmentVariables().size() > 0 ||
-      task_spec.RuntimeEnv().conda_env_name != "") {
+      task_spec.RuntimeEnv().conda_env_name != "" ||
+      task_spec.RuntimeEnv().conda_serialized_yaml !=
+          "") {  // TODO (architkulkarni) isEmpty
     // Code path of task that needs a dedicated worker: an actor creation task with
     // dynamic worker options, or any task with environment variable overrides, or
     // any task with a specified RuntimeEnv.
