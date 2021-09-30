@@ -30,8 +30,8 @@ def test_pip_requirements_files():
         return requests.__version__
 
     env_18 = {"pip": str(pip_file_18)}
-    assert ray.get(get_version.options(
-        runtime_env=env_18).remote() == "2.18.0")
+    assert ray.get(
+        get_version.options(runtime_env=env_18).remote() == "2.18.0")
 
     @ray.remote
     class VersionActor:
@@ -49,8 +49,10 @@ def test_pip_requirements_files():
     os.remove(pip_file_18)
     os.remove(pip_file_16)
 
+
 def main():
     test_pip_requirements_files()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
