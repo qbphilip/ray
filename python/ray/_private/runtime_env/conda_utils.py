@@ -63,12 +63,13 @@ def _get_conda_env_name(conda_env_path: str) -> str:
         conda_env_contents.encode("utf-8")).hexdigest()
 
 
-def create_conda_env(conda_yaml_file: str,
-                     prefix: str,
-                     logger: Optional[logging.Logger] = None) -> None:
+def create_conda_env_if_needed(conda_yaml_file: str,
+                               prefix: str,
+                               logger: Optional[logging.Logger] = None
+                               ) -> None:
     """
-    Given a conda YAML file and a path, creates a conda environment containing
-    the required dependencies.
+    Given a conda YAML file and a prefix, creates a conda environment with the
+    required dependencies if a conda env doesn't already exist at that prefix.
 
     Args:
         conda_yaml_file (str): The path to a conda `environment.yml` file.
@@ -92,10 +93,15 @@ def create_conda_env(conda_yaml_file: str,
             f"Conda executable by setting the {RAY_CONDA_HOME} "
             "environment variable to the path of the Conda executable.")
 
-    create_cmd = [
-        conda_path, "env", "create", "--file", conda_yaml_file, "--prefix",
-        prefix
-    ]
+    _, stdout, _ = exec_cmd([conda_path, "env", "list", "--json"])
+    envs = json.loads(stdout)["envs"]
+
+    create_cmd = None
+    if prefix not in envs:
+        create_cmd = [
+            conda_path, "env", "create", "--file", conda_yaml_file, "--prefix",
+            prefix
+        ]
 
     if create_cmd is not None:
         logger.info(f"Creating conda environment {prefix}")
