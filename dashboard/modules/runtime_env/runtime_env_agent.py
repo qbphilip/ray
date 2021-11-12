@@ -213,8 +213,14 @@ class RuntimeEnvAgent(dashboard_utils.DashboardAgentModule,
                 if not self._py_modules_manager.delete_uri(uri):
                     failed_uris.append(uri)
             elif plugin == "conda":
-                if not self._conda_manager.delete_uri(uri):
-                    failed_uris.append(uri)
+                # Existing refcounts only count jobs and detached actors, so
+                # they aren't valid for per-actor and per-task fields such as
+                # "conda.  So do not delete conda URIs for now.
+                # TODO(architkulkarni): Set up reference counting properly (by
+                # worker) and uncomment the below.
+                # if not self._conda_manager.delete_uri(uri):
+                #     failed_uris.append(uri)
+                pass
             else:
                 raise ValueError(
                     "RuntimeEnvAgent received DeleteURI request "
